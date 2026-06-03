@@ -145,7 +145,8 @@ class MiniAgent:
             response = self.client.chat.completions.create(
                 model=os.getenv("ZAI_MODEL"),
                 messages=[{"role": "user", "content": prompt}],
-                temperature=0.7
+                temperature=0.7,
+                response_format={ "type": "json_object" }
             )
             return response.choices[0].message.content
         except Exception as e:
@@ -165,7 +166,8 @@ class MiniAgent:
             response = self.client.chat.completions.create(
                 model=os.getenv("ZAI_MODEL"),
                 messages=messages,
-                temperature=0
+                temperature=0,
+                response_format={ "type": "json_object" }
             )
             return response.choices[0].message.content
         except Exception as e:

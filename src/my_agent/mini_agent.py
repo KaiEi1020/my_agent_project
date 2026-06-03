@@ -1,11 +1,10 @@
 import inspect
 import json
-import os
-import re
 from typing import Annotated, Any, Literal, Union
 
 from pydantic import BaseModel, Field, TypeAdapter, ValidationError
-from zai import ZhipuAiClient
+from src.llm.base import BaseLLMCaller
+from src.prompts import prompt
 
 
 class ToolCallPayload(BaseModel):
@@ -28,7 +27,7 @@ class FinalAnswerPayload(BaseModel):
 AgentPayload = Annotated[Union[ToolCallPayload, FinalAnswerPayload], Field(discriminator="type")]
 
 
-class MiniAgent:
+class MiniAgent(BaseLLMCaller):
     """
     一个简单的 Agent 类，实现 ReAct 模式（Reasoning + Acting）
     """
@@ -43,13 +42,13 @@ class MiniAgent:
         """
         self.tools = tools
         self.max_steps = 5
-        self.client = ZhipuAiClient(api_key=os.getenv("ZAI_API_KEY"))
         self.response_adapter = TypeAdapter[Any](AgentPayload)
 
         # 构建完整的系统提示词
         tool_descriptions = self._build_tool_description(tools)
-        self.system_prompt = self._build_system_prompt(system_prompt, tool_descriptions)
-        self.messages = [{"role": "system", "content": self.system_prompt}]
+        full_system_prompt = self._build_system_prompt(system_prompt, tool_descriptions)
+        super().__init__(system_prompt=full_system_prompt)
+        self.messages = []
 
     def _build_tool_description(self, tools):
         """构建工具描述文本"""
@@ -62,59 +61,49 @@ class MiniAgent:
 
     def _build_system_prompt(self, base_prompt, tool_descriptions):
         """构建完整的系统提示词"""
-        return f"""{base_prompt}
+        return prompt(f"""
+            {base_prompt}
 
-## 可用工具
-{tool_descriptions}
+            ## 可用工具
+            {tool_descriptions}
 
-## 重要规则（必须严格遵守）
-1. 你每次只能输出一个 JSON 对象
-2. 不要输出 Markdown、代码块、额外解释或 Observation
-3. 如果要调用工具，必须输出 `type=tool_call`
-4. 如果任务已完成，必须输出 `type=final_answer`
-5. `action_input` 必须是 JSON 对象，key 必须与工具参数名一致
-6. 只有在获得足够信息后才能输出 `final_answer`
+            ## 重要规则（必须严格遵守）
+            1. 你每次只能输出一个 JSON 对象
+            2. 不要输出 Markdown、代码块、额外解释或 Observation
+            3. 如果要调用工具，必须输出 `type=tool_call`
+            4. 如果任务已完成，必须输出 `type=final_answer`
+            5. `action_input` 必须是 JSON 对象，key 必须与工具参数名一致
+            6. 只有在获得足够信息后才能输出 `final_answer`
 
-## JSON 输出格式
-### 工具调用
-{{
-  "type": "tool_call",
-  "thought": "简要分析当前情况",
-  "action": "工具名",
-  "action_input": {{
-    "参数名": "参数值"
-  }}
-}}
+            ## JSON 输出格式
+            ### 工具调用
+            {{
+              "type": "tool_call",
+              "thought": "简要分析当前情况",
+              "action": "工具名",
+              "action_input": {{
+                "参数名": "参数值"
+              }}
+            }}
 
-### 最终答案
-{{
-  "type": "final_answer",
-  "thought": "简要说明结论依据",
-  "final_answer": "给用户的最终答案"
-}}
+            ### 最终答案
+            {{
+              "type": "final_answer",
+              "thought": "简要说明结论依据",
+              "final_answer": "给用户的最终答案"
+            }}
 
-## 禁止行为
-❌ 严禁编造 Observation 数据
-❌ 严禁一次性输出多轮推理过程
-❌ 严禁输出无法解析的自由文本
-❌ 严禁传入与工具签名不匹配的参数名
+            ## 禁止行为
+            ❌ 严禁编造 Observation 数据
+            ❌ 严禁一次性输出多轮推理过程
+            ❌ 严禁输出无法解析的自由文本
+            ❌ 严禁传入与工具签名不匹配的参数名
 
-## 注意事项
-1. 必须通过工具获取信息，不能编造
-2. 如果工具调用失败，根据返回的 Observation 调整下一步
-3. 输出必须是合法 JSON
-"""
-
-    def _extract_json_text(self, text):
-        """从模型回复中提取 JSON 文本"""
-        stripped = text.strip()
-
-        if stripped.startswith("```"):
-            code_block_match = re.search(r"```(?:json)?\s*(.*?)\s*```", stripped, re.DOTALL)
-            if code_block_match:
-                return code_block_match.group(1).strip()
-
-        return stripped
+            ## 注意事项
+            1. 必须通过工具获取信息，不能编造
+            2. 如果工具调用失败，根据返回的 Observation 调整下一步
+            3. 输出必须是合法 JSON
+        """)
 
     def _parse_agent_response(self, response_text):
         """解析并校验 Agent 输出"""
@@ -141,37 +130,11 @@ class MiniAgent:
         Returns:
             LLM 的文本响应
         """
-        try:
-            response = self.client.chat.completions.create(
-                model=os.getenv("ZAI_MODEL"),
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.7,
-                response_format={ "type": "json_object" }
-            )
-            return response.choices[0].message.content
-        except Exception as e:
-            return f"LLM 调用失败：{e}"
-
-    def call_llm(self, messages):
-        """
-        完整调用 LLM（用于主对话循环，支持上下文）
-
-        Args:
-            messages: 消息列表，包含对话历史
-
-        Returns:
-            LLM 的文本响应
-        """
-        try:
-            response = self.client.chat.completions.create(
-                model=os.getenv("ZAI_MODEL"),
-                messages=messages,
-                temperature=0,
-                response_format={ "type": "json_object" }
-            )
-            return response.choices[0].message.content
-        except Exception as e:
-            return f"Error: {e}"
+        return self.call_llm(
+            [{"role": "user", "content": prompt}],
+            temperature=0.7,
+            response_format={"type": "json_object"},
+        )
 
     # ========== 错误处理方法 ==========
 
@@ -224,7 +187,11 @@ class MiniAgent:
             print(f"{'=' * 50}")
 
             # 1. 让模型思考
-            response = self.call_llm(self.messages)
+            response = self.call_llm(
+                self.messages,
+                temperature=0,
+                response_format={"type": "json_object"},
+            )
             print(f"\n[LLM Response]:\n{response}")
 
             # 2. 解析结构化输出

@@ -108,6 +108,26 @@ def check_refund_policy(order_id: str) -> str:
     return "符合退货政策：订单在 7 天无理由退货期内，商品未拆封"
 
 
+def get_user_info(args) -> dict:
+    """
+    获取用户信息
+    
+    Args:
+        args: 参数（当前不需要）
+    
+    Returns:
+        包含 userId 的用户信息字典
+    """
+    print(f"[工具调用] get_user_info()")
+    
+    # 从环境变量中获取用户 ID，如果没有设置则使用默认值
+    user_id = os.getenv("USER_ID", "123")
+    
+    return {
+        "userId": user_id
+    }
+
+
 # ========== 主程序 ==========
 
 def test_after_sales_agent():
@@ -123,6 +143,7 @@ def test_after_sales_agent():
         "get_order_details": get_order_details,
         "initiate_refund": initiate_refund,
         "check_refund_policy": check_refund_policy,
+        "get_user_info": get_user_info,
     }
     
     # 创建 Agent

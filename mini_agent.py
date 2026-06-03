@@ -41,16 +41,29 @@ class MiniAgent:
 ## 可用工具
 {tool_descriptions}
 
+## 重要规则（必须严格遵守）
+1. **你只输出 Thought 和 Action**，绝对不要输出 Observation
+2. Observation 是系统执行工具后自动返回的，不是你生成的
+3. 每次只输出一轮 Thought + Action，然后等待系统返回 Observation
+4. 收到 Observation 后，再决定下一步行动
+5. 只有在获得足够信息后才能输出 Final Answer
+
 ## 回复格式
-你必须严格使用以下格式：
-- Thought: 分析当前情况，规划下一步
-- Action: 工具名 (参数)
-- Observation: (系统会自动返回工具执行结果)
-- 重复以上步骤直到完成任务
-- Final Answer: 给用户的最终答案
+ Thought: 分析当前情况，规划下一步
+Action: 工具名 (参数)
+
+（然后等待系统返回 Observation）
+
+重复以上步骤直到完成任务，最后输出：
+Final Answer: 给用户的最终答案
+
+## 禁止行为
+❌ 严禁编造 Observation 数据
+❌ 严禁一次性输出多轮 Thought-Action-Observation
+❌ 严禁在没有工具支持的情况下编造信息
 
 ## 注意事项
-1. 严禁编造数据，必须通过工具获取信息
+1. 必须通过工具获取信息，不能编造
 2. 如果工具调用失败，分析原因并尝试其他方法
 3. 只有在获得足够信息后才能输出 Final Answer
 """
@@ -146,6 +159,7 @@ class MiniAgent:
             # 1. 让模型思考
             response = self.call_llm(self.messages)
             print(f"\n[LLM Response]:\n{response}")
+            print(f"\n[Debug] 尝试匹配 Action 正则表达式...")
             
             # 2. 检查是否已经是最终答案
             if "Final Answer:" in response:
@@ -154,17 +168,34 @@ class MiniAgent:
 
             # 3. 捕捉 Action
             action_match = re.search(r"Action:\s*(\w+)\((.*)\)", response)
+            print(f"[Debug] action_match 结果：{action_match}")
+            
             if action_match:
                 func_name = action_match.group(1)
                 args = action_match.group(2)
                 print(f"\n[Action] 调用工具：{func_name}({args})")
+                print(f"[Debug] 可用工具列表：{list(self.tools.keys())}")
+                print(f"[Debug] func_name='{func_name}', in tools={func_name in self.tools}")
                 
                 # 4. 执行工具并处理异常
                 try:
-                    observation = self.tools[func_name](args)
+                    if func_name not in self.tools:
+                        raise KeyError(f"工具 '{func_name}' 不存在，可用工具：{list(self.tools.keys())}")
+                    
+                    # 解析参数：如果 args 为空字符串，则不传参数；否则尝试解析
+                    print(f"[Debug] 原始 args: '{args}'")
+                    if args.strip() == "":
+                        # 无参数调用
+                        observation = self.tools[func_name]()
+                    else:
+                        # 有参数调用，直接传入字符串
+                        observation = self.tools[func_name](args)
+                    
                     print(f"[Observation] 结果：{observation}")
                 except Exception as e:
                     print(f"[Error] 工具执行失败：{e}")
+                    import traceback
+                    traceback.print_exc()
                     observation = self.handle_error_with_user(e)
                     if observation == "STOP":
                         print(f"\n[✗] 用户选择停止")
@@ -183,3 +214,4 @@ class MiniAgent:
         
         print(f"\n[✗] 达到最大循环次数，未能完成任务")
         return "达到最大循环次数，未能完成任务"
+

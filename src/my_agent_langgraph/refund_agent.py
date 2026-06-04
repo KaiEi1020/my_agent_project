@@ -64,6 +64,11 @@ app = workflow.compile()
 
 
 if __name__ == "__main__":
+    # 声明安全配置：限制整张图最多只能流转 10 步
+    config = {
+        "configurable": {"thread_id": "user_session_001"}, # 顺便带上线程ID（用于记忆）
+        "recursion_limit": 10  # 限制 llm_brain + tool_runner 总调用次数
+    }
     result = app.invoke(
         {
             "messages": [
@@ -71,7 +76,8 @@ if __name__ == "__main__":
                     content="我10天前买了一件 500 块钱的衣服，现在想退，能退多少钱？"
                 )
             ]
-        }
+        },
+        config=config,
     )
 
     print("==== 大模型的最终人话 ====")

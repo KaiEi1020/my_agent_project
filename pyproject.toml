@@ -12,6 +12,8 @@ dependencies = [
     "httpcore==1.0.9",
     "httpx==0.28.1",
     "idna==3.13",
+    "langchain-core>=0.3.0",
+    "langchain-openai>=0.3.0",
     "pydantic==2.13.3",
     "pydantic-core==2.46.3",
     "pyjwt==2.12.1",
@@ -21,5 +23,4 @@ dependencies = [
     "typing-extensions==4.15.0",
     "typing-inspection==0.4.2",
     "urllib3==2.6.3",
-    "zai-sdk==0.2.2",
 ]

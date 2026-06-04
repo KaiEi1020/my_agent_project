@@ -45,4 +45,6 @@ uv sync
 
 # 运行项目
 uv run main.py
+
+uv run python -m src.my_agent_langchain.weather_agent
 ```

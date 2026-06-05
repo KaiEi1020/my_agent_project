@@ -1,6 +1,29 @@
 # my_agent_project
 > agent 学习项目
 
+这是一个 Agent 学习项目。
+
+- `docs/`：学习笔记
+- `demos/`：示例 demo
+
+## 快速开始
+
+### 跑 demo 前准备
+1. 先去智谱 GLM 注册新账号，领取新人礼包。
+2. 在项目根目录下，按照 `.env-example` 的格式填写环境变量。
+3. 安装依赖：
+
+```bash
+uv sync
+```
+
+### 运行 demo
+```bash
+uv run demos/xxx.py
+```
+
+执行对应 demo 文件后，就可以查看各个 demo 的运行效果。
+
 ## 虚拟环境
 ```bash
 # 创建虚拟环境

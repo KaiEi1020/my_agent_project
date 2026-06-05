@@ -24,19 +24,6 @@ uv run demos/xxx.py
 
 执行对应 demo 文件后，就可以查看各个 demo 的运行效果。
 
-## 虚拟环境
-```bash
-# 创建虚拟环境
-python3 -m venv venv
-# 激活虚拟环境(激活虚拟环境后， pip 会自动指向 Python 3 版本)
-source venv/bin/activate
-```
-
-```bash
-# 重新激活虚拟环境
-deactivate
-source venv/bin/activate
-```
 
 ## 包管理
 1. 是一个 `uv` 进行包管理

@@ -13,8 +13,8 @@ def run_demo():
         print(zai.__version__)
         client = ZhipuAiClient(api_key=os.getenv("ZAI_API_KEY"))
         response = client.chat.completions.create(
-            model="glm-4.6v",
-            messages=[{"role": "user", "content": "请帮我写一个..."}],
+            model=os.getenv("ZAI_MODEL"),
+            messages=[{"role": "user", "content": "请帮我写一首诗..."}],
         )
         print(response.choices[0].message.content)
     except Exception as error:

@@ -1,4 +1,5 @@
 # Checkpointer（状态检查点持久化器）
+Checkpointer = 状态快照存储器
 
 ## 什么是 Checkpointer？
 

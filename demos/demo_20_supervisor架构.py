@@ -1,4 +1,4 @@
-from typing import Literal, TypedDict
+from typing import TypedDict
 from langgraph.graph import StateGraph, START, END
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 
@@ -73,11 +73,10 @@ app = workflow.compile()
 inputs = {"messages": [HumanMessage(content="请帮我写个代码并做好测试")]}
 
 # 实时流式打印节点更新
-print("--- 开始流式执行多智能体网络 ---", flush=True)
+print("--- 开始流式执行多智能体网络 ---")
 for output in app.stream(inputs, stream_mode="updates"):
-    print(f"[debug] raw output: {output}", flush=True)
     for node_name, node_output in output.items():
-        print(f"📡 [流式通知] 节点 '{node_name}' 执行完毕!", flush=True)
+        print(f"📡 [流式通知] 节点 '{node_name}' 执行完毕!")
         if "messages" in node_output:
-            print(f"      产出内容: {node_output['messages'][-1].content}", flush=True)
-print("--- 任务处理完成 ---", flush=True)
+            print(f"      产出内容: {node_output['messages'][-1].content}")
+print("--- 任务处理完成 ---")

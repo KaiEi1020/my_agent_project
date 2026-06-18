@@ -86,7 +86,8 @@ print("\n🛠️ [人类干预] 参谋长发现大模型算错账，强行将转
 app.update_state(
     config_thread,
     {"transfer_amount": 1000}, # 覆写状态！
-    as_node="auditor_brain"     # 声明是以 auditor_brain 节点的名义修正的
+    # 基于检查点的状态覆写与节点重定向（State Overwrite & Node Redirection）
+    as_node="auditor_brain"     # 声明是以 auditor_brain 节点的名义修正的 
 )
 
 # ==========================================
